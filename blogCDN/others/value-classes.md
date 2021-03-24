@@ -1,4 +1,5 @@
 clone from [Kotlin/KEEP](https://github.com/Kotlin/KEEP)
+- inline classes here: [Inline classes](inline-classes.md)
 
 ---
 

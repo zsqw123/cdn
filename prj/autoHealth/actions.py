@@ -1,3 +1,5 @@
+# way1 web-vpn
+
 import math
 import time
 import random
@@ -6,15 +8,35 @@ import re
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
+import wechat
+
 rsa_e = "010001"
 rsa_m = "008aed7e057fe8f14c73550b0e6467b023616ddc8fa91846d2613cdb7f7621e3cada4cd5d812d627af6b87727ade4e26d26208b7326815941492b2204c3167ab2d53df1e3a2c9153bdb7c8c2e968df97a5e7e01cc410f92c4c2c2fba529b3ee988ebc1fca99ff5119e036d732c368acf8beba01aa2fdafa45b21e4de4928d0d403"
+urlheader = "https://web-vpn.sues.edu.cn/https/77726476706e69737468656265737421e7f85397213c6747301b9ca98b1b26312700d3d1/default/work/shgcd/jkxxcj"
 
 e = {}
+todayDoneCount = 0
 
 
 def log(s: str):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}]\t{s}")
+
+
+def lower_json(json_info):
+    if isinstance(json_info, dict):
+        for key in list(json_info.keys()):
+            if key.islower():
+                lower_json(json_info[key])
+            else:
+                key_lower = key.lower()
+                json_info[key_lower] = json_info[key]
+                del json_info[key]
+                lower_json(json_info[key_lower])
+
+    elif isinstance(json_info, list):
+        for item in json_info:
+            lower_json(item)
 
 
 def genRSAPasswd(passwd, e, m):
@@ -69,61 +91,53 @@ def loginByWebVPN(username, password):
     time.sleep(5)
     return True, "success", targetUrl, sess
 
-def lower_json(json_info):
-    if isinstance(json_info, dict):
-        for key in list(json_info.keys()):
-            if key.islower():
-                lower_json(json_info[key])
-            else:
-                key_lower = key.lower()
-                json_info[key_lower] = json_info[key]
-                del json_info[key]
-                lower_json(json_info[key_lower])
 
-    elif isinstance(json_info, list):
-        for item in json_info:
-            lower_json(item)
-
-
-def queryToday(username, ampm, tjsj, url, referer, sess):
+def queryToday(username, ampm, tjsj, referer, sess):
     try:
         queryTodayJson = {
             "params": {
-                "empcode": username,
+                # "empcode": username,
                 'sd': ampm,
                 'tjsj': tjsj,
             },
-            "querySqlId": "com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryToday"
+            # "querySqlId": "com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryToday.biz.ext"
         }
         sess.headers.update({
             "referer": referer
         })
-        res = sess.post(url, json=queryTodayJson, verify=False)
-        today_list = res.json()["list"]
+        res = sess.post(urlheader+"/com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryToday.biz.ext"
+                        + "?vpn-12-o2-workflow.sues.edu.cn",
+                        json=queryTodayJson, verify=False)
+        today_list = res.json()["resultData"]
         if len(today_list) == 0:
             return False
         else:
             global e
             e = today_list[0]
             lower_json(e)
+            global todayDoneCount
+            todayDoneCount += 1
             return True
     except:
         return False
 
 
-def queryNear(username, url, referer, sess):
+def queryNear(username, referer, sess):
     try:
-        queryNearJson = {
-            "params": {
-                "empcode": username
-            },
-            "querySqlId": "com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryNear"
-        }
+        # queryNearJson = {
+        #     "params": {
+        #         "empcode": username
+        #     },
+        #     "querySqlId": "com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryNear.biz.ext"
+        # }
         sess.headers.update({
             "referer": referer
         })
-        res = sess.post(url, json=queryNearJson, verify=False)
-        near_list = res.json()["list"]
+        res = sess.post(urlheader+"/com.sudytech.work.shgcd.jkxxcj.jkxxcj.queryNear.biz.ext"
+                        + "?vpn-12-o2-workflow.sues.edu.cn",
+                        # json=queryNearJson,
+                        verify=False)
+        near_list = res.json()["resultData"]
         if len(near_list) == 0:
             return False
         else:
@@ -144,7 +158,7 @@ def doReport(person):
     if not state:
         return False, msg
     reportUrl = "https://web-vpn.sues.edu.cn/https/77726476706e69737468656265737421e7f85397213c6747301b9ca98b1b26312700d3d1/default/work/shgcd/jkxxcj/jkxxcj.jsp"
-    urlheader = "https://web-vpn.sues.edu.cn/https/77726476706e69737468656265737421e7f85397213c6747301b9ca98b1b26312700d3d1/default/work/shgcd/jkxxcj"
+    # reportUrl = "https://web-vpn.sues.edu.cn/https/77726476706e69737468656265737421e7f85397213c6747301b9ca98b1b26312700d3d1/default/work/shgcd/jkxxcj/com.sudytech.work.shgcd.jkxxcj.jkxxcj.saveOrUpdate.biz.ext?vpn-12-o2-workflow.sues.edu.cn"
     sess.get(reportUrl, verify=False)
 
     time_utc = datetime.utcnow()
@@ -160,9 +174,9 @@ def doReport(person):
     url = urlheader+"/com.sudytech.portalone.base.db.queryBySqlWithoutPagecond.biz.ext"
 
     # Today
-    if not queryToday(username, timeType, tjsj, url, reportUrl, sess):
-        if not queryNear(username, url, reportUrl, sess):
-            log(username+":无最近数据")
+    if not queryToday(username, timeType, tjsj,  reportUrl, sess):
+        if not queryNear(username, reportUrl, sess):
+            log(username+"无最近数据")
             return False
 
     # 上报
@@ -173,15 +187,18 @@ def doReport(person):
     }
     log(updateData["params"]["gh"] + "\t" +
         "gentemp:" + updateData["params"]["tw"])
-    url = urlheader+"/com.sudytech.work.shgcd.jkxxcj.jkxxcj.saveOrUpdate.biz.ext"
-    finalRes = sess.post(url, json=updateData, verify=False)
+    # url = urlheader+"/com.sudytech.work.shgcd.jkxxcj.jkxxcj.saveOrUpdate.biz.ext"
+    finalRes = sess.post("https://web-vpn.sues.edu.cn/https/77726476706e69737468656265737421e7f85397213c6747301b9ca98b1b26312700d3d1/default/work/shgcd/jkxxcj/com.sudytech.work.shgcd.jkxxcj.jkxxcj.saveOrUpdate.biz.ext?vpn-12-o2-workflow.sues.edu.cn",
+                         json=updateData, verify=False)
     json = finalRes.json()
     if 'exception' in json:
-        return False, "Already reported or sever down"
+        log("Already reported or sever down")
+        return False
     elif json['result']["success"]:
-        return True, None
+        return True
     else:
-        return False, "[" + finalRes.json()['result']['errorcode'] + "]" + finalRes.json()['result']['msg']
+        log("[" + json['result']['errorcode'] + "]" + json['result']['msg'])
+        return False
 
 
 if __name__ == '__main__':
